@@ -21,7 +21,7 @@ typedef struct packet{
 }PACKET;
 
 void sendBroadcastMessage(PACKET packet);
-void sendMessage(PACKET packet);
+void sendMessage(PACKET packet, struct sockaddr_in cli_addr);
 void receiveMessage();
 
 #endif

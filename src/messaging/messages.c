@@ -35,8 +35,6 @@ void receiveMessage()
 		pos += 2;
 		receivedPacket.length = *((uint16_t*)&(buf[pos]));
 		pos += 2;
-		receivedPacket.timestamp = *((uint16_t*)&(buf[pos]));
-		pos += 2;
 		strcpy(receivedPacket.payload, &buf[pos]);
 
 		pos = 0;
@@ -48,11 +46,11 @@ void receiveMessage()
 
 		printf("Received a datagram: %s\n", receivedPacket.payload);
 
-		switch(receivedPacket.type){
-			case SLEEP_DISCOVERY_PACKET:
-				sendParticipantAck(cli_addr);
-				break;
-		}
+		// switch(receivedPacket.type){
+		// 	case SLEEP_DISCOVERY_PACKET:
+		// 		sendParticipantAck(cli_addr);
+		// 		break;
+		// }
 	}
 	
 	close(socketFD);
@@ -81,18 +79,13 @@ void sendBroadcastMessage(PACKET packet)
 	close(socketFD);
 }
 
-void sendMessage(PACKET packet, sockaddr_in cli_addr)
+void sendMessage(PACKET packet, struct sockaddr_in cli_addr)
 {
 	int socketFD;
 	char buf[256];
 		
   if ((socketFD = socket(AF_INET, SOCK_DGRAM, 0)) == -1) 
 		printf("ERROR: Could not open socket\n");
-
-	memset(&cli_addr, 0, sizeof(cli_addr));
-	cli_addr.sin_family = AF_INET;
-	cli_addr.sin_port = htons(port);
-	cli_addr.sin_addr.s_addr = htonl(address); 
 
 	if (sendto(socketFD, &packet, sizeof(PACKET), 0, (struct sockaddr *) &cli_addr, sizeof(struct sockaddr)) < 0) 
 		printf("ERROR: Could not send message");

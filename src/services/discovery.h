@@ -5,6 +5,6 @@
 #include "../utils.h"
 #include <stdio.h>
 
-void sendDiscoveryPacket(bool bManager);
+void sendDiscoveryPacket();
 
 #endif
