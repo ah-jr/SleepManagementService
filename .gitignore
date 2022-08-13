@@ -2,5 +2,6 @@
 /.vscode
 
 # binaries
+out
 *.o
 *.exe
