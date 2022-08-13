@@ -4,38 +4,80 @@
 #include "services/services.h"
 
 
+void handleReceive(uint16_t rec_port){
+  struct sockaddr_in rep_addr;
+  PACKET packet;
+  MessageManager messageManager; 
+  messageManager.setSocket(rec_port);
+
+  while (1){
+    memset(&packet, 0, sizeof(packet));
+    memset(&rep_addr, 0, sizeof(rep_addr));
+    messageManager.receiveMessage(0, &rep_addr, &packet);
+  }
+
+  messageManager.closeSocket();
+}
+
 void runManager()
 {
-    // Start active services
-    std::thread sendDiscoveryThread(&sendDiscoveryPacket, PORT_CLI);
-    std::thread sendMonitoringThread(&sendMonitoringPacket, PORT_CLI);
+  // Start active services
+  MessageManager messageManager; 
+  messageManager.setSocket(PORT_CLI);
 
-    // Start passive services
-    std::thread receiveMessagesThread(&receiveMessage, PORT_SERVER, 0);
+  std::thread sendDiscoveryThread(&handleDiscoveryPacket, PORT_CLI, messageManager);
+  std::thread sendMonitoringThread(&handleMonitoringPacket, PORT_CLI, messageManager);
 
-    // Join Threads
-    sendDiscoveryThread.join();
-    receiveMessagesThread.join();
+  messageManager.closeSocket();
+
+  // Start passive services
+  std::thread receiveMessagesThread(&handleReceive, PORT_SERVER);
+
+  // Join Threads
+  sendDiscoveryThread.join();
+  sendMonitoringThread.join();
+  receiveMessagesThread.join();
 }
 
 void runParticipant()
 {
-    bool awake = true;
-    
-    receiveMessage(PORT_CLI, PORT_SERVER);
+  bool awake = true;
+  struct sockaddr_in rep_addr;
+  PACKET packet;
+  MessageManager messageManager; 
+  messageManager.setSocket(PORT_CLI);
+
+  while (1){
+    memset(&packet, 0, sizeof(packet));
+    memset(&rep_addr, 0, sizeof(rep_addr));
+
+    messageManager.receiveMessage(PORT_SERVER, &rep_addr, &packet);
+
+    switch (packet.type)
+    {
+    case SLEEP_DISCOVERY_PACKET:
+      messageManager.replyMessage(rep_addr, packet.type, "Discovery_ACK");
+      break;
+    case SLEEP_MONITORING_PACKET:
+      messageManager.replyMessage(rep_addr, packet.type, "Awaken");
+      break;
+    }
+  }
+
+  messageManager.closeSocket();
 }
 
-int main(int argc, char** argv){
-
+int main(int argc, char **argv)
+{
   bool bManager = 0;
 
-  if(argc > 2){
+  if (argc > 2){
     printf("ERROR: Expected 2 arguments but received %d\n", argc);
     exit(1);
   }
 
-  if((argc == 2)){
-    if(strcmp(argv[1], "manager") == 0){
+  if ((argc == 2)){
+    if (strcmp(argv[1], "manager") == 0){
       bManager = true;
     }
     else{
@@ -44,9 +86,9 @@ int main(int argc, char** argv){
     }
   }
 
-  if(bManager){
+  if (bManager){
     runManager();
-  }    
+  }
   else
     runParticipant();
 

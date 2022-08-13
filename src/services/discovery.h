@@ -4,6 +4,6 @@
 #include "../messaging/messages.h"
 #include <stdio.h>
 
-void sendDiscoveryPacket(uint16_t send_port);
+void handleDiscoveryPacket(uint16_t send_port, MessageManager messageManager);
 
 #endif

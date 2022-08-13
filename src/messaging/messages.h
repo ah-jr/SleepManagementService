@@ -24,10 +24,19 @@ typedef struct packet
     char payload[256]; // Dados da mensagem
 } PACKET;
 
-void sendBroadcastMessage(PACKET packet, uint16_t send_port);
-void sendMessage(PACKET packet, struct sockaddr_in send_addr);
+class MessageManager
+{
+private:
+	int socketFD;
 
-void receiveMessage(uint16_t rec_port, uint16_t rep_port);
-void replyMessage(struct sockaddr_in rep_addr, uint16_t type, const char *payload);
+public:
+	MessageManager() = default;
+    void setSocket(uint16_t rec_port);
+    void closeSocket();
+	void receiveMessage(uint16_t rep_port, struct sockaddr_in* rep_addr, PACKET* packet);
+	void replyMessage(struct sockaddr_in rep_addr, uint16_t type, const char* payload);
+	void sendBroadcastMessage(PACKET packet, uint16_t send_port);
+	void sendMessage(PACKET packet, struct sockaddr_in send_addr);
+};
 
 #endif
