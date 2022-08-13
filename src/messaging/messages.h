@@ -31,7 +31,7 @@ private:
 
 public:
 	MessageManager() = default;
-    void setSocket(uint16_t rec_port);
+    void setSocket(uint16_t rec_port, bool bBroadCast);
     void closeSocket();
 	void receiveMessage(uint16_t rep_port, struct sockaddr_in* rep_addr, PACKET* packet);
 	void replyMessage(struct sockaddr_in rep_addr, uint16_t type, const char* payload);

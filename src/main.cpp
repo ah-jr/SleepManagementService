@@ -1,19 +1,39 @@
 #include <stdio.h>
 #include <thread>
+#include <vector>
 #include "messaging/messages.h"
 #include "services/services.h"
 
+typedef struct participant{
+  char name[10];
+  char* mac_addr;
+  char* ip_addr;
+  bool status;
+} PARTICIPANT;
 
-void handleReceive(uint16_t rec_port){
+void handleReceive(uint16_t rec_port, std::vector<PARTICIPANT>& participantsVec){
   struct sockaddr_in rep_addr;
   PACKET packet;
   MessageManager messageManager; 
-  messageManager.setSocket(rec_port);
+  messageManager.setSocket(rec_port, false);
 
   while (1){
     memset(&packet, 0, sizeof(packet));
     memset(&rep_addr, 0, sizeof(rep_addr));
     messageManager.receiveMessage(0, &rep_addr, &packet);
+    
+    // PList participant;
+    // strcpy(participant.name, "Teste");
+    // participant.mac_addr =
+    // participant.ip_addr = rep_addr.sin_addr.s_addr;
+    // participant.status =            
+
+    // switch (packet.type){
+    //   case SLEEP_MONITORING_PACKET:
+    //     //participantsVec.push_back(participant);
+    //     break;
+    //   default : fprintf(stderr, "Wrong packet: %d\n", packet.type);
+    // }
   }
 
   messageManager.closeSocket();
@@ -21,17 +41,15 @@ void handleReceive(uint16_t rec_port){
 
 void runManager()
 {
+  std::vector<PARTICIPANT> participantsVec; 
+
   // Start active services
-  MessageManager messageManager; 
-  messageManager.setSocket(PORT_CLI);
-
-  std::thread sendDiscoveryThread(&handleDiscoveryPacket, PORT_CLI, messageManager);
-  std::thread sendMonitoringThread(&handleMonitoringPacket, PORT_CLI, messageManager);
-
-  messageManager.closeSocket();
+  std::thread sendDiscoveryThread(&handleDiscoveryPacket, PORT_CLI);
+  std::thread sendMonitoringThread(&handleMonitoringPacket, PORT_CLI);
+  //std::thread managementThread(&handleManagement); 
 
   // Start passive services
-  std::thread receiveMessagesThread(&handleReceive, PORT_SERVER);
+  std::thread receiveMessagesThread(&handleReceive, PORT_SERVER, std::ref(participantsVec));
 
   // Join Threads
   sendDiscoveryThread.join();
@@ -45,22 +63,19 @@ void runParticipant()
   struct sockaddr_in rep_addr;
   PACKET packet;
   MessageManager messageManager; 
-  messageManager.setSocket(PORT_CLI);
+  messageManager.setSocket(PORT_CLI, false);
 
-  while (1){
-    memset(&packet, 0, sizeof(packet));
-    memset(&rep_addr, 0, sizeof(rep_addr));
-
+  while (true){
     messageManager.receiveMessage(PORT_SERVER, &rep_addr, &packet);
 
-    switch (packet.type)
-    {
-    case SLEEP_DISCOVERY_PACKET:
-      messageManager.replyMessage(rep_addr, packet.type, "Discovery_ACK");
-      break;
-    case SLEEP_MONITORING_PACKET:
-      messageManager.replyMessage(rep_addr, packet.type, "Awaken");
-      break;
+    switch (packet.type){
+      case SLEEP_DISCOVERY_PACKET:
+        messageManager.replyMessage(rep_addr, packet.type, "Discovery_ACK");
+        break;
+      case SLEEP_MONITORING_PACKET:
+        if (awake) messageManager.replyMessage(rep_addr, packet.type, "Awaken");
+        break;
+      default : fprintf(stderr, "Wrong packet: %d\n", packet.type);
     }
   }
 
@@ -86,9 +101,8 @@ int main(int argc, char **argv)
     }
   }
 
-  if (bManager){
+  if (bManager)
     runManager();
-  }
   else
     runParticipant();
 

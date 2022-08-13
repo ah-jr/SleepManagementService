@@ -1,19 +1,24 @@
 #include "messages.h"
 #include <stdio.h>
 
-void MessageManager::setSocket(uint16_t rec_port){
-	struct sockaddr_in rec_addr;
-		
+void MessageManager::setSocket(uint16_t rec_port, bool bBroadCast){
 	if ((socketFD = socket(AF_INET, SOCK_DGRAM, 0)) == -1) 
 		printf("ERROR: Could not open socket\n");
 
-	memset(&rec_addr, 0, sizeof(rec_addr));
-	rec_addr.sin_family = AF_INET;
-	rec_addr.sin_port = htons(rec_port);
-	rec_addr.sin_addr.s_addr = INADDR_ANY;     
-	
-	if (bind(socketFD, (struct sockaddr *)&rec_addr, sizeof(struct sockaddr)) < 0) 
-		printf("ERROR: Could not bind socket\n");
+	if (bBroadCast){		
+		int broadcastEnable = 1;
+		setsockopt(socketFD, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, sizeof(broadcastEnable));
+	}
+	else{
+		struct sockaddr_in rec_addr;
+		memset(&rec_addr, 0, sizeof(rec_addr));
+		rec_addr.sin_family = AF_INET;
+		rec_addr.sin_port = htons(rec_port);
+		rec_addr.sin_addr.s_addr = INADDR_ANY;     
+		
+		if (bind(socketFD, (struct sockaddr *)&rec_addr, sizeof(struct sockaddr)) < 0) 
+			printf("ERROR: Could not bind socket\n");
+	}
 }
 
 void MessageManager::closeSocket(){
@@ -56,14 +61,7 @@ void  MessageManager::replyMessage(struct sockaddr_in rep_addr, uint16_t type, c
 
 void  MessageManager::sendBroadcastMessage(PACKET packet, uint16_t send_port)
 {
-	int socketFD;
 	struct sockaddr_in send_addr;
-		
-	if ((socketFD = socket(AF_INET, SOCK_DGRAM, 0)) == -1) 
-	  printf("ERROR: Could not open socket\n");
-
-	int broadcastEnable = 1;
-	setsockopt(socketFD, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, sizeof(broadcastEnable));
 
 	memset(&send_addr, 0, sizeof(send_addr));
 	send_addr.sin_family = AF_INET;
@@ -72,19 +70,10 @@ void  MessageManager::sendBroadcastMessage(PACKET packet, uint16_t send_port)
 
 	if (sendto(socketFD, &packet, sizeof(PACKET), 0, (struct sockaddr *) &send_addr, sizeof(struct sockaddr)) < 0) 
 		printf("ERROR: Could not send message");
-	
-	close(socketFD);
 }
 
 void MessageManager::sendMessage(PACKET packet, struct sockaddr_in send_addr)
 {
-	int socketFD;
-		
-	if ((socketFD = socket(AF_INET, SOCK_DGRAM, 0)) == -1) 
-		printf("ERROR: Could not open socket\n");
-
 	if (sendto(socketFD, &packet, sizeof(PACKET), 0, (struct sockaddr *) &send_addr, sizeof(struct sockaddr)) < 0) 
 		printf("ERROR: Could not send message");
-
-	close(socketFD);
 }

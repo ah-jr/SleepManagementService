@@ -4,6 +4,6 @@
 #include "../messaging/messages.h"
 #include <stdio.h>
 
-void handleMonitoringPacket(uint16_t send_port, MessageManager messageManager);
+void handleMonitoringPacket(uint16_t send_port);
 
 #endif
