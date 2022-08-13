@@ -13,6 +13,9 @@
 #define SLEEP_DISCOVERY_PACKET 1
 #define SLEEP_DISCOVERY_PACKET_ACK 2
 
+#define PORT_CLI 4000
+#define PORT_SERVER 4001
+
 typedef struct packet{
  uint16_t type; //Tipo do pacote (p.ex. DATA | CMD)
  uint16_t seqn; //Número de sequência
@@ -20,8 +23,8 @@ typedef struct packet{
  char payload[256]; //Dados da mensagem
 }PACKET;
 
-void sendBroadcastMessage(PACKET packet);
-void sendMessage(PACKET packet, struct sockaddr_in cli_addr);
-void receiveMessage();
+void sendBroadcastMessage(PACKET packet, uint16_t send_port);
+void sendMessage(PACKET packet, struct sockaddr_in send_addr);
+void receiveMessage(uint16_t rec_port, uint16_t rep_port);
 
 #endif

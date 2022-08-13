@@ -1,6 +1,6 @@
 #include "discovery.h"
 
-void sendDiscoveryPacket(){
+void sendDiscoveryPacket(uint16_t send_port){
   PACKET packet;
 
   packet.type = SLEEP_DISCOVERY_PACKET;
@@ -8,19 +8,19 @@ void sendDiscoveryPacket(){
   strcpy(packet.payload, "oi\0");
   packet.length = 0;
 
-  while(TRUE){
-    sendBroadcastMessage(packet);
+  while(true){
+    sendBroadcastMessage(packet, send_port);
     sleep(3);
   }
 }
 
-void sendParticipantAck(struct sockaddr_in cli_addr){
+void sendParticipantAck(struct sockaddr_in send_addr){
   PACKET packet;
 
   packet.type = SLEEP_DISCOVERY_PACKET_ACK;
   packet.seqn = 0;
-  strcpy(packet.payload, "oi\0");
+  strcpy(packet.payload, "ack\0");
   packet.length = 0;
 
-  sendMessage(packet, cli_addr);
+  sendMessage(packet, send_addr);
 }
