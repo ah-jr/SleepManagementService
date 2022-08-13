@@ -5,7 +5,7 @@ void sendDiscoveryPacket(uint16_t send_port){
 
   packet.type = SLEEP_DISCOVERY_PACKET;
   packet.seqn = 0;
-  strcpy(packet.payload, "oi\0");
+  strcpy(packet.payload, "Discovery message");
   packet.length = 0;
 
   while(true){
@@ -14,13 +14,3 @@ void sendDiscoveryPacket(uint16_t send_port){
   }
 }
 
-void sendParticipantAck(struct sockaddr_in send_addr){
-  PACKET packet;
-
-  packet.type = SLEEP_DISCOVERY_PACKET_ACK;
-  packet.seqn = 0;
-  strcpy(packet.payload, "ack\0");
-  packet.length = 0;
-
-  sendMessage(packet, send_addr);
-}

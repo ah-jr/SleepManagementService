@@ -1,5 +1,4 @@
 #include "messages.h"
-#include "../services/discovery.h"
 #include <stdio.h>
 
 void receiveMessage(uint16_t rec_port, uint16_t rep_port)
@@ -27,6 +26,10 @@ void receiveMessage(uint16_t rec_port, uint16_t rep_port)
 		if (recvfrom(socketFD, buf, 256, 0, (struct sockaddr *)&rep_addr, &clilen) < 0) 
 			printf("ERROR: Could not receive message\n");
 
+		// Set reply port:
+		rep_addr.sin_port = htons(rep_port);
+
+		// Read packet
 		pos = 0;
 		receivedPacket.type = *((uint16_t*)&(buf[pos]));
 		pos += 2;
@@ -39,13 +42,22 @@ void receiveMessage(uint16_t rec_port, uint16_t rep_port)
 		fprintf(stderr, "Received a datagram: %s\n", receivedPacket.payload);
 
 		switch(receivedPacket.type){
-			case SLEEP_DISCOVERY_PACKET:
-				rep_addr.sin_port = htons(rep_port);
-				sendParticipantAck(rep_addr);
-				break;
+			case SLEEP_DISCOVERY_PACKET : replyMessage(rep_addr, receivedPacket.type, "Discovery_ACK"); break;
+			case SLEEP_MONITORING_PACKET: replyMessage(rep_addr, receivedPacket.type, "Awaken"); break;
 		}
 	}
 	close(socketFD);
+}
+
+void replyMessage(struct sockaddr_in rep_addr, uint16_t type, const char* payload)
+{
+	PACKET packet;
+	packet.type = type;
+	packet.seqn = 0;
+	strcpy(packet.payload, payload);
+	packet.length = 0;
+
+	sendMessage(packet, rep_addr);
 }
 
 void sendBroadcastMessage(PACKET packet, uint16_t send_port)

@@ -1,8 +1,29 @@
 #include <stdio.h>
 #include <thread>
 #include "messaging/messages.h"
-#include "services/discovery.h"
+#include "services/services.h"
 
+
+void runManager()
+{
+    // Start active services
+    std::thread sendDiscoveryThread(&sendDiscoveryPacket, PORT_CLI);
+    std::thread sendMonitoringThread(&sendMonitoringPacket, PORT_CLI);
+
+    // Start passive services
+    std::thread receiveMessagesThread(&receiveMessage, PORT_SERVER, 0);
+
+    // Join Threads
+    sendDiscoveryThread.join();
+    receiveMessagesThread.join();
+}
+
+void runParticipant()
+{
+    bool awake = true;
+    
+    receiveMessage(PORT_CLI, PORT_SERVER);
+}
 
 int main(int argc, char** argv){
 
@@ -24,14 +45,10 @@ int main(int argc, char** argv){
   }
 
   if(bManager){
-    std::thread t1(&sendDiscoveryPacket, PORT_CLI);
-    std::thread t2(&receiveMessage, PORT_SERVER, 0);
-
-    t1.join();
-    t2.join();
+    runManager();
   }    
   else
-    receiveMessage(PORT_CLI, PORT_SERVER);
+    runParticipant();
 
   return 0;
 }
