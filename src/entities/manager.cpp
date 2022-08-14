@@ -63,6 +63,15 @@ void ManagerEntity::handleReceiveThread(){
           pMap.insert(std::pair<std::string, PARTICIPANT>(packet.hostname, p)); 
         }
         break;
+      
+      case EXIT_PACKET:   
+        if (pMap.count(packet.hostname)){
+          it = pMap.find(packet.hostname); 
+          it->second.active = false;
+          it->second.awake = false;
+        }
+          
+      break;
 
       default : fprintf(stderr, "Wrong packet: %d\n", packet.type);
     }
@@ -157,7 +166,10 @@ void ManagerEntity::handleIOThread(){
         strcpy(packet.mac_addr, it->second.mac_addr);
         packet.awake = true;
 
-        sendMessage(packet);
+        char command[30];
+
+        sprintf(command, "wakeonlan %s", packet.mac_addr);
+        system(command);
       }
 
       update = true;

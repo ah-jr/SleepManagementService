@@ -22,9 +22,9 @@ void ParticipantEntity::run()
 //=======================================================================
 void ParticipantEntity::handleMessageThread()
 {
-  struct sockaddr_in rep_addr;
   PACKET packet; 
   MessageManager messageManager; 
+  struct sockaddr_in rep_addr;
   messageManager.setSocket(rec_port, false);
 
   while (true){
@@ -70,7 +70,7 @@ void ParticipantEntity::handleMessageThread()
 //=======================================================================
 void ParticipantEntity::handleIOThread()
 {
-  char *command;
+  char command[30];
 
   while(true){
     std::cin >> command; 
@@ -81,8 +81,24 @@ void ParticipantEntity::handleIOThread()
       status.awake = false;
     else if (strcmp(command, "wakeup") == 0)
       status.awake = true;
-    else if (strcmp(command, "exit") == 0)
+    else if (strcmp(command, "exit") == 0){
       status.active = false;
+      PACKET packet; 
+      MessageManager messageManager; 
+      messageManager.setSocket(PORT_SERVER, true);
+
+      packet.type = EXIT_PACKET;
+      packet.active = false;
+      packet.awake = false;
+      strcpy(packet.hostname, status.name);
+      strcpy(packet.ip_addr, status.ip_addr);
+      strcpy(packet.mac_addr, status.mac_addr);
+
+      messageManager.sendMessage(packet);
+      messageManager.closeSocket();
+      exit(1);
+    }
+     
     else if (strcmp(command, "enter") == 0)
       status.active = true;  
 
