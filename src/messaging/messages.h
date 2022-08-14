@@ -31,15 +31,15 @@ class MessageManager
 {
 private:
 	int socketFD;
+    struct sockaddr_in skt_addr;
 
 public:
 	MessageManager() = default;
-    void setSocket(uint16_t rec_port, bool bBroadCast);
+    void setSocket(uint16_t skt_port, bool bBroadcast);
     void closeSocket();
-	void receiveMessage(uint16_t rep_port, struct sockaddr_in* rep_addr, PACKET* packet);
-	void replyMessage(struct sockaddr_in rep_addr, uint16_t type, const char* payload);
-	void sendBroadcastMessage(PACKET packet, uint16_t send_port);
-	void sendMessage(PACKET packet, struct sockaddr_in send_addr);
+	void receiveMessage(struct sockaddr_in* rep_addr, PACKET* packet);
+	void replyMessage(struct sockaddr_in rep_addr, PACKET packet);
+	void sendMessage(PACKET packet);
 };
 
 //=======================================================================
