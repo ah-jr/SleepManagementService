@@ -26,52 +26,48 @@ void ManagerEntity::run()
 void ManagerEntity::handleReceiveThread(){
   struct sockaddr_in rep_addr;
   PACKET packet;
-  std::set<PARTICIPANT>::iterator it;
+  PARTICIPANT p;
+  std::map<std::string, PARTICIPANT>::iterator it;
   MessageManager messageManager; 
   messageManager.setSocket(rec_port, false);
 
   while (1){
     messageManager.receiveMessage(&rep_addr, &packet);
     
-    PARTICIPANT p;
-    strcpy(p.name, packet.hostname);
-    strcpy(p.mac_addr, packet.mac_addr);
-    strcpy(p.ip_addr, packet.ip_addr);
-
-    pSet_mutex.lock();
+    pMap_mutex.lock();
 
     switch (packet.type){
       case SLEEP_MONITORING_PACKET:
-        if (pSet.count(p)){
-          p.discovery_count = 0;
-          p.awake = packet.awake;
-          p.monitoring_count = 0;
-
-          pSet.erase(p); 
-          pSet.insert(p); 
+        if (pMap.count(packet.hostname)){
+          it = pMap.find(packet.hostname);
+          it->second.discovery_count = 0;
+          it->second.monitoring_count = 0;
+          it->second.awake = packet.awake;
         }
-
         break;
 
       case SLEEP_DISCOVERY_PACKET:   
-        it = pSet.find(p);
-
-        if (pSet.count(*it)) {
-          p.monitoring_count = it->monitoring_count;
-          pSet.erase(*it); 
+        if (pMap.count(packet.hostname)) {
+          it = pMap.find(packet.hostname);
+          it->second.discovery_count = 0;
+          it->second.active = packet.active;
         }
-        else
-          p.monitoring_count = 0;      
-
-        p.active = packet.active;
-        p.discovery_count = 0;
-        pSet.insert(p); 
+        else{
+          strcpy(p.name, packet.hostname);
+          strcpy(p.ip_addr, packet.ip_addr);
+          strcpy(p.mac_addr, packet.mac_addr);
+          p.active = packet.active;
+          p.awake = packet.awake;
+          p.monitoring_count = 0;   
+          p.discovery_count = 0;
+          pMap.insert(std::pair<std::string, PARTICIPANT>(packet.hostname, p)); 
+        }
         break;
 
       default : fprintf(stderr, "Wrong packet: %d\n", packet.type);
     }
 
-    pSet_mutex.unlock();
+    pMap_mutex.unlock();
   }
 
   messageManager.closeSocket();
@@ -80,39 +76,17 @@ void ManagerEntity::handleReceiveThread(){
 //=======================================================================
 void ManagerEntity::handleManagementThread(){
   while(1){
-    pSet_mutex.lock();
-    for (auto it = pSet.begin(); it != pSet.end(); ++it){
-      if ((*it).monitoring_count >= MAX_MONITORING_COUNT){
-        PARTICIPANT p;
-
-        strcpy(p.name, it->name);
-        strcpy(p.ip_addr, it->ip_addr);
-        strcpy(p.mac_addr, it->mac_addr);
-        p.discovery_count = it->discovery_count;
-        p.monitoring_count = it->monitoring_count;
-        p.active = it->active;
-        p.awake = false;
-
-        pSet.erase(*it);
-        pSet.insert(p);
+    pMap_mutex.lock();
+    for (auto it = pMap.begin(); it != pMap.end(); ++it){
+      if (it->second.monitoring_count >= MAX_MONITORING_COUNT){
+        it->second.awake = false;
       }
       
-      if ((*it).discovery_count >= MAX_DISCOVERY_COUNT) {
-        PARTICIPANT p;
-
-        strcpy(p.name, it->name);
-        strcpy(p.ip_addr, it->ip_addr);
-        strcpy(p.mac_addr, it->mac_addr);
-        p.discovery_count = it->discovery_count;
-        p.monitoring_count = it->monitoring_count;
-        p.active = false;
-        p.awake = it->awake;
-
-        pSet.erase(*it);
-        pSet.insert(p);   	    
+      if (it->second.discovery_count >= MAX_DISCOVERY_COUNT) {
+        it->second.active = false;  
       }
     }
-    pSet_mutex.unlock();
+    pMap_mutex.unlock();
 
     sleep(1);
   }
@@ -140,34 +114,19 @@ void ManagerEntity::handleDiscoveryThread(){
 
 //=======================================================================
 void ManagerEntity::incrementCounters(int type){
-  pSet_mutex.lock();
-  for (auto it = pSet.begin(); it != pSet.end(); ++it){
-    PARTICIPANT p;
-
-    strcpy(p.name, it->name);
-    strcpy(p.ip_addr, it->ip_addr);
-    strcpy(p.mac_addr, it->mac_addr);
-
+  pMap_mutex.lock();
+  for (auto it = pMap.begin(); it != pMap.end(); ++it){
     switch(type){
-    case SLEEP_DISCOVERY_PACKET : 
-      p.discovery_count = it->discovery_count + 1;
-      p.monitoring_count = it->monitoring_count;
+    case SLEEP_DISCOVERY_PACKET: 
+      it->second.discovery_count++;
       break;
 
-    case SLEEP_MONITORING_PACKET : 
-      p.discovery_count = it->discovery_count;
-      p.monitoring_count = it->monitoring_count + 1;
+    case SLEEP_MONITORING_PACKET: 
+      it->second.monitoring_count++;
       break;
     }
-
-    p.active = it->active;
-    p.awake = it->awake;
-
-    pSet.erase(*it);
-    pSet.insert(p);  
   }
-
-  pSet_mutex.unlock();
+  pMap_mutex.unlock();
 }
 
 //=======================================================================
@@ -185,20 +144,17 @@ void ManagerEntity::handleIOThread(){
       scanf(" %s %s", command, hostname);
     
       if (strcmp(command, "WAKEUP") == 0){
-        std::set<PARTICIPANT>::iterator it;
-        PARTICIPANT p;
-        
-        strcpy(p.name, hostname);
-        
-        pSet_mutex.lock();
-        it = pSet.find(p);
-        pSet_mutex.unlock();
+        std::map<std::string, PARTICIPANT>::iterator it; 
+       
+        pMap_mutex.lock();
+        it = pMap.find(hostname);
+        pMap_mutex.unlock();
 
         PACKET packet;
         packet.type = WAKEUP_PACKET;
-        strcpy(packet.hostname, (*it).name);
-        strcpy(packet.ip_addr, (*it).ip_addr);
-        strcpy(packet.mac_addr, (*it).mac_addr);
+        strcpy(packet.hostname, it->second.name);
+        strcpy(packet.ip_addr, it->second.ip_addr);
+        strcpy(packet.mac_addr, it->second.mac_addr);
         packet.awake = true;
 
         sendMessage(packet);
@@ -248,19 +204,19 @@ void ManagerEntity::handleInterfaceThread(){
       table->add( "Mon_Count" );
       table->endOfRow();
 
-      pSet_mutex.lock();
-      for (auto it = pSet.begin(); it != pSet.end(); ++it){
-        if ((*it).active){
-          table->add((*it).name);
-          table->add((*it).mac_addr);
-          table->add((*it).ip_addr);
-          table->add((*it).awake ? "awake" : "ASLEEP" );
-          table->add(std::to_string((*it).discovery_count));
-          table->add(std::to_string((*it).monitoring_count));
+      pMap_mutex.lock();
+      for (auto it = pMap.begin(); it != pMap.end(); ++it){
+        if (it->second.active){
+          table->add(it->second.name);
+          table->add(it->second.mac_addr);
+          table->add(it->second.ip_addr);
+          table->add(it->second.awake ? "awake" : "ASLEEP" );
+          table->add(std::to_string(it->second.discovery_count));
+          table->add(std::to_string(it->second.monitoring_count));
           table->endOfRow();
         }
       }
-      pSet_mutex.unlock();
+      pMap_mutex.unlock();
 
       table->setAlignment( 2, TextTable::Alignment::RIGHT );
       std::cout << *table;

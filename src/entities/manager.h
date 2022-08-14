@@ -1,7 +1,7 @@
 #ifndef MANAGER_H
 #define MANAGER_H
 
-#include <set>
+#include <map>
 #include <algorithm>
 #include <thread>
 #include <mutex>
@@ -15,8 +15,8 @@ class ManagerEntity
 {
 private:
     std::atomic<bool> update;
-    std::set<PARTICIPANT> pSet; 
-    std::mutex pSet_mutex;
+    std::map<std::string, PARTICIPANT> pMap; 
+    std::mutex pMap_mutex;
     uint16_t rec_port;
     uint16_t send_port;
 
