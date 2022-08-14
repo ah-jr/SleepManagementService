@@ -4,18 +4,22 @@
 #include <iostream>
 #include <thread>
 #include <fstream>
+#include <mutex>
+#include "types.h"
 #include "../messaging/messages.h"
+#include "../deps/cpp-text-table-master/TextTable.h"
 
 //=======================================================================
 class ParticipantEntity
 {
 private:
-    bool active;
-    bool awake;
+    PARTICIPANT status;
+    std::mutex status_mutex;
     uint16_t rec_port;
 public:
     void run();
     void handleMessageThread();
+    void handleInterfaceThread();
     void handleIOThread();
     void getMacAddress(char* mac_addr);
 };

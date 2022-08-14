@@ -16,6 +16,7 @@
 //=======================================================================
 #define SLEEP_DISCOVERY_PACKET 1
 #define SLEEP_MONITORING_PACKET 2
+#define WAKEUP_PACKET 3
 
 #define PORT_CLI 4000
 #define PORT_SERVER 4001
