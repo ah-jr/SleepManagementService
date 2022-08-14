@@ -9,6 +9,9 @@
 #include <string.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <stdio.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
 
 //=======================================================================
 #define SLEEP_DISCOVERY_PACKET 1
@@ -17,13 +20,19 @@
 #define PORT_CLI 4000
 #define PORT_SERVER 4001
 
+#define MSG_STR_LEN 20
+
+#define MAC_ADDR_PATH "/sys/class/net/eth0/address"
+
 //=======================================================================
 typedef struct packet
 {
     uint16_t type;     // Package type (DATA | CMD)
-    uint16_t seqn;     // Seq number
-    uint16_t length;   // Payload's length
-    char payload[256]; // Message data
+    bool active;
+    bool awake;      
+    char hostname[MSG_STR_LEN];
+    char ip_addr[MSG_STR_LEN];
+    char mac_addr[MSG_STR_LEN]; 
 } PACKET;
 
 //=======================================================================
@@ -40,6 +49,7 @@ public:
 	void receiveMessage(struct sockaddr_in* rep_addr, PACKET* packet);
 	void replyMessage(struct sockaddr_in rep_addr, PACKET packet);
 	void sendMessage(PACKET packet);
+    void getIpAddress(char * ip_addr);
 };
 
 //=======================================================================

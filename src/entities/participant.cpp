@@ -25,16 +25,20 @@ void ParticipantEntity::handleMessageThread()
   while (true){
     messageManager.receiveMessage(&rep_addr, &packet);
     rep_addr.sin_port = htons(PORT_SERVER);
-    
+
+    gethostname(packet.hostname, MSG_STR_LEN);
+    messageManager.getIpAddress(packet.ip_addr); 
+    getMacAddress(packet.mac_addr);
+
     switch (packet.type){
 
       case SLEEP_DISCOVERY_PACKET:
-        active ? strcpy(packet.payload, "active") : strcpy(packet.payload, "inactive");
+        packet.active = active;
         messageManager.replyMessage(rep_addr, packet);
         break;
         
       case SLEEP_MONITORING_PACKET:
-        awake ? strcpy(packet.payload, "awaken") : strcpy(packet.payload, "asleep");
+        packet.awake = awake;
         messageManager.replyMessage(rep_addr, packet);
         break;
 
@@ -64,6 +68,15 @@ void ParticipantEntity::handleIOThread()
 
     fprintf(stderr, "New status: %s/%s\n", active ? "active" : "inactive", awake ? "awake" : "asleep" );
   }
+}
+
+//=======================================================================
+void ParticipantEntity::getMacAddress(char* mac_addr){
+  std::string str_mac;
+  std::ifstream in(MAC_ADDR_PATH);
+  std::getline(in, str_mac);
+
+  strcpy(mac_addr, str_mac.c_str());
 }
 
 //=======================================================================

@@ -1,5 +1,4 @@
 #include "messages.h"
-#include <stdio.h>
 
 //=======================================================================
 void MessageManager::setSocket(uint16_t skt_port, bool bBroadcast){
@@ -39,13 +38,16 @@ void  MessageManager::receiveMessage(struct sockaddr_in* rep_addr, PACKET* packe
 
 	int pos = 0;
 	packet->type = *((uint16_t*)&(buf[pos]));
-	pos += 2;
-	packet->seqn = *((uint16_t*)&(buf[pos]));
-	pos += 2;
-	packet->length = *((uint16_t*)&(buf[pos]));
-	pos += 2;
-	strcpy(packet->payload, &buf[pos]);
-	//fprintf(stderr, "Received a datagram: %s\n", packet->payload);
+	pos += sizeof(uint16_t);
+	packet->active = *((bool*)&(buf[pos]));
+	pos += sizeof(bool);
+	packet->awake = *((bool*)&(buf[pos]));	
+	pos += sizeof(bool);
+	strcpy(packet->hostname, &buf[pos]);
+	pos += sizeof(char) * MSG_STR_LEN;
+	strcpy(packet->ip_addr, &buf[pos]);
+	pos += sizeof(char) * MSG_STR_LEN;
+	strcpy(packet->mac_addr, &buf[pos]);
 }
 
 //=======================================================================
@@ -60,6 +62,15 @@ void MessageManager::sendMessage(PACKET packet)
 {
 	if (sendto(socketFD, &packet, sizeof(PACKET), 0, (struct sockaddr *) &skt_addr, sizeof(struct sockaddr)) < 0) 
 		printf("ERROR: Could not send message");
+}
+
+//=======================================================================
+void MessageManager::getIpAddress(char * ip_addr){
+    struct ifreq ifr;
+    ifr.ifr_addr.sa_family = AF_INET;
+    memcpy(ifr.ifr_name, "eth0", IFNAMSIZ - 1);
+    ioctl(socketFD, SIOCGIFADDR, &ifr);
+    strcpy(ip_addr, inet_ntoa(((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr));
 }
 
 //=======================================================================

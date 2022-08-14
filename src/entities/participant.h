@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <thread>
+#include <fstream>
 #include "../messaging/messages.h"
 
 //=======================================================================
@@ -16,6 +17,7 @@ public:
     void run();
     void handleMessageThread();
     void handleIOThread();
+    void getMacAddress(char* mac_addr);
 };
 
 //=======================================================================

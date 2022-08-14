@@ -28,9 +28,9 @@ void ManagerEntity::handleReceiveThread(){
     messageManager.receiveMessage(&rep_addr, &packet);
     
     PARTICIPANT p;
-    strcpy(p.name, "Teste");
-    strcpy(p.mac_addr, "");
-    strcpy(p.ip_addr, std::to_string(rep_addr.sin_addr.s_addr).c_str());
+    strcpy(p.name, packet.hostname);
+    strcpy(p.mac_addr, packet.mac_addr);
+    strcpy(p.ip_addr, packet.ip_addr);
 
     pSet_mutex.lock();
 
@@ -38,13 +38,13 @@ void ManagerEntity::handleReceiveThread(){
       case SLEEP_MONITORING_PACKET:
         if (pSet.count(p)){
           pSet.erase(p); 
-          p.status = (strcmp(packet.payload, "awaken") == 0);
+          p.status = packet.awake;
           pSet.insert(p); 
         }
         break;
 
       case SLEEP_DISCOVERY_PACKET:   
-        if (strcmp(packet.payload, "active") == 0)
+        if (packet.active)
           pSet.insert(p);
         else    
           pSet.erase(p); 
@@ -63,9 +63,8 @@ void ManagerEntity::handleReceiveThread(){
 void ManagerEntity::handleMonitoringThread(){
   PACKET packet;
   packet.type = SLEEP_MONITORING_PACKET;
-  packet.seqn = 0;
-  strcpy(packet.payload, "Monitoring message");
-  packet.length = 0;
+  packet.awake = false;
+  packet.active = false;
 
   broadcastMessage(packet);
 }
@@ -74,9 +73,8 @@ void ManagerEntity::handleMonitoringThread(){
 void ManagerEntity::handleDiscoveryThread(){
   PACKET packet;
   packet.type = SLEEP_DISCOVERY_PACKET;
-  packet.seqn = 0;
-  strcpy(packet.payload, "Discovery message");
-  packet.length = 0;
+  packet.awake = false;
+  packet.active = false;
 
   broadcastMessage(packet);
 }
