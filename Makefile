@@ -1,6 +1,6 @@
 
-out: messages.o main.o discovery.o monitoring.o
-	g++ -o out messages.o main.o discovery.o monitoring.o -lpthread
+out: messages.o manager.o participant.o main.o 
+	g++ -o out messages.o manager.o participant.o main.o -lpthread
 
 main.o: src/main.cpp
 	g++ -c src/main.cpp -lpthread
@@ -8,11 +8,11 @@ main.o: src/main.cpp
 messages.o: src/messaging/messages.cpp
 	g++ -c src/messaging/messages.cpp
 
-discovery.o: src/services/discovery.cpp
-	g++ -c src/services/discovery.cpp 
+manager.o: src/entities/manager.cpp
+	g++ -c src/entities/manager.cpp
 
-monitoring.o: src/services/monitoring.cpp
-	g++ -c src/services/monitoring.cpp 
+participant.o: src/entities/participant.cpp
+	g++ -c src/entities/participant.cpp
 
 clean:
 	rm *.o out
