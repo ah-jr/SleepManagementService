@@ -10,20 +10,23 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
+//=======================================================================
 #define SLEEP_DISCOVERY_PACKET 1
 #define SLEEP_MONITORING_PACKET 2
 
 #define PORT_CLI 4000
 #define PORT_SERVER 4001
 
+//=======================================================================
 typedef struct packet
 {
-    uint16_t type;     // Tipo do pacote (p.ex. DATA | CMD)
-    uint16_t seqn;     // Número de sequência
-    uint16_t length;   // Comprimento do payload
-    char payload[256]; // Dados da mensagem
+    uint16_t type;     // Package type (DATA | CMD)
+    uint16_t seqn;     // Seq number
+    uint16_t length;   // Payload's length
+    char payload[256]; // Message data
 } PACKET;
 
+//=======================================================================
 class MessageManager
 {
 private:
@@ -39,4 +42,5 @@ public:
 	void sendMessage(PACKET packet, struct sockaddr_in send_addr);
 };
 
+//=======================================================================
 #endif

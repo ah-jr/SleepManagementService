@@ -1,14 +1,16 @@
 #ifndef MANAGER_H
 #define MANAGER_H
 
-#include <vector>
+#include <set>
+#include <algorithm>
 #include "types.h"
 #include "../messaging/messages.h"
 
+//=======================================================================
 class ManagerEntity
 {
 private:
-    std::vector<PARTICIPANT> participantVec; 
+    std::set<PARTICIPANT> pSet; 
     uint16_t rec_port;
     uint16_t send_port;
 
@@ -17,6 +19,8 @@ public:
     void handleReceiveThread();
     void handleDiscoveryThread();
     void handleMonitoringThread();
+    void handleInterfaceThread();
 };
 
+//=======================================================================
 #endif

@@ -1,19 +1,18 @@
 #include "participant.h"
 #include <thread>
 
+//=======================================================================
 void ParticipantEntity::run()
 {
-    // Initialize variables
     awake = true;
     rec_port = PORT_CLI;
 
-    // Start active services
     std::thread receiveMessageThread(&ParticipantEntity::handleMessageThread, this);  
 
-    // Join Threads
     receiveMessageThread.join();  
 }
 
+//=======================================================================
 void ParticipantEntity::handleMessageThread()
 {
   struct sockaddr_in rep_addr;
@@ -37,3 +36,5 @@ void ParticipantEntity::handleMessageThread()
 
   messageManager.closeSocket();
 }
+
+//=======================================================================

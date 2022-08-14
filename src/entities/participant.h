@@ -3,6 +3,7 @@
 
 #include "../messaging/messages.h"
 
+//=======================================================================
 class ParticipantEntity
 {
 private:
@@ -13,4 +14,5 @@ public:
     void handleMessageThread();
 };
 
+//=======================================================================
 #endif

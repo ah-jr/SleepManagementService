@@ -1,26 +1,25 @@
 #include "manager.h"
+#include "types.h"
 #include <thread>
 
+//=======================================================================
 void ManagerEntity::run()
 {
-  // Initialize variables
   rec_port = PORT_SERVER;
   send_port = PORT_CLI;
 
-  // Start active services
   std::thread sendDiscoveryThread(&ManagerEntity::handleDiscoveryThread, this);
   std::thread sendMonitoringThread(&ManagerEntity::handleMonitoringThread, this);
-  //std::thread managementThread(&handleManagement); 
-
-  // Start passive services
+  std::thread interfaceThread(&ManagerEntity::handleInterfaceThread, this); 
   std::thread receiveMessagesThread(&ManagerEntity::handleReceiveThread, this);
 
-  // Join Threads
   sendDiscoveryThread.join();
   sendMonitoringThread.join();
+  interfaceThread.join();
   receiveMessagesThread.join();
 }
 
+//=======================================================================
 void ManagerEntity::handleReceiveThread(){
   struct sockaddr_in rep_addr;
   PACKET packet;
@@ -28,27 +27,32 @@ void ManagerEntity::handleReceiveThread(){
   messageManager.setSocket(rec_port, false);
 
   while (1){
-    memset(&packet, 0, sizeof(packet));
-    memset(&rep_addr, 0, sizeof(rep_addr));
     messageManager.receiveMessage(0, &rep_addr, &packet);
     
-    // PList participant;
-    // strcpy(participant.name, "Teste");
-    // participant.mac_addr =
-    // participant.ip_addr = rep_addr.sin_addr.s_addr;
-    // participant.status =            
+    PARTICIPANT p;
+    strcpy(p.name, "Teste");
+    strcpy(p.mac_addr, "");
+    strcpy(p.ip_addr, std::to_string(rep_addr.sin_addr.s_addr).c_str());
+    p.status = true;
 
-    // switch (packet.type){
-    //   case SLEEP_MONITORING_PACKET:
-    //     //participantsVec.push_back(participant);
-    //     break;
-    //   default : fprintf(stderr, "Wrong packet: %d\n", packet.type);
-    // }
+    switch (packet.type){
+      case SLEEP_MONITORING_PACKET:
+        pSet.insert(p); 
+
+        // for (auto it = pSet.begin(); it != pSet.end(); ++it)
+        //   fprintf(stderr, "%s\n", (*it).name);
+
+        break;
+      case SLEEP_DISCOVERY_PACKET:
+        break;
+      default : fprintf(stderr, "Wrong packet: %d\n", packet.type);
+    }
   }
 
   messageManager.closeSocket();
 }
 
+//=======================================================================
 void ManagerEntity::handleMonitoringThread(){
   MessageManager messageManager; 
   PACKET packet;
@@ -66,6 +70,7 @@ void ManagerEntity::handleMonitoringThread(){
   messageManager.closeSocket();
 }
 
+//=======================================================================
 void ManagerEntity::handleDiscoveryThread(){
   MessageManager messageManager; 
   PACKET packet;
@@ -82,3 +87,10 @@ void ManagerEntity::handleDiscoveryThread(){
 
   messageManager.closeSocket();
 }
+
+//=======================================================================
+void ManagerEntity::handleInterfaceThread(){
+
+}
+
+//=======================================================================

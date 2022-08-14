@@ -1,6 +1,7 @@
 #include "messages.h"
 #include <stdio.h>
 
+//=======================================================================
 void MessageManager::setSocket(uint16_t rec_port, bool bBroadCast){
 	if ((socketFD = socket(AF_INET, SOCK_DGRAM, 0)) == -1) 
 		printf("ERROR: Could not open socket\n");
@@ -21,10 +22,12 @@ void MessageManager::setSocket(uint16_t rec_port, bool bBroadCast){
 	}
 }
 
+//=======================================================================
 void MessageManager::closeSocket(){
 	close(socketFD);
 }
 
+//=======================================================================
 void  MessageManager::receiveMessage(uint16_t rep_port, struct sockaddr_in* rep_addr, PACKET* packet)
 {
 	socklen_t clilen = sizeof(struct sockaddr_in);
@@ -33,10 +36,8 @@ void  MessageManager::receiveMessage(uint16_t rep_port, struct sockaddr_in* rep_
 	if (recvfrom(socketFD, buf, 256, 0, (struct sockaddr *)rep_addr, &clilen) < 0) 
 		printf("ERROR: Could not receive message\n");
 
-	// Set reply port:
 	rep_addr->sin_port = htons(rep_port);
 
-	// Read packet
 	int pos = 0;
 	packet->type = *((uint16_t*)&(buf[pos]));
 	pos += 2;
@@ -48,6 +49,7 @@ void  MessageManager::receiveMessage(uint16_t rep_port, struct sockaddr_in* rep_
 	fprintf(stderr, "Received a datagram: %s\n", packet->payload);
 }
 
+//=======================================================================
 void  MessageManager::replyMessage(struct sockaddr_in rep_addr, uint16_t type, const char* payload)
 {
 	PACKET packet;
@@ -59,6 +61,7 @@ void  MessageManager::replyMessage(struct sockaddr_in rep_addr, uint16_t type, c
 	sendMessage(packet, rep_addr);
 }
 
+//=======================================================================
 void  MessageManager::sendBroadcastMessage(PACKET packet, uint16_t send_port)
 {
 	struct sockaddr_in send_addr;
@@ -72,8 +75,11 @@ void  MessageManager::sendBroadcastMessage(PACKET packet, uint16_t send_port)
 		printf("ERROR: Could not send message");
 }
 
+//=======================================================================
 void MessageManager::sendMessage(PACKET packet, struct sockaddr_in send_addr)
 {
 	if (sendto(socketFD, &packet, sizeof(PACKET), 0, (struct sockaddr *) &send_addr, sizeof(struct sockaddr)) < 0) 
 		printf("ERROR: Could not send message");
 }
+
+//=======================================================================
