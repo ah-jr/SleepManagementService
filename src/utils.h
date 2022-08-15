@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <cstring>
+#include <signal.h>
 
 //=======================================================================
 bool checkInput(int argc, char **argv){

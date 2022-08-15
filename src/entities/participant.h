@@ -18,6 +18,7 @@ private:
     uint16_t rec_port;
 public:
     void run();
+    void terminate();
     void handleMessageThread();
     void handleInterfaceThread();
     void handleIOThread();
