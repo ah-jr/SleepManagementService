@@ -4,4 +4,4 @@
 # binaries
 out
 *.o
-*.exe
+sleep_server
