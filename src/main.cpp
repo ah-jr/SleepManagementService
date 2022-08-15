@@ -3,14 +3,22 @@
 #include "entities/participant.h"
 
 //=======================================================================
+ParticipantEntity participant;
+ManagerEntity manager;
+
+//=======================================================================
+void signal_callback_handler(int signum) {
+  participant.terminate();
+}
+
+//=======================================================================
 int main(int argc, char **argv)
 {
   if (checkInput(argc, argv)){
-    ManagerEntity manager;
     manager.run();
   }
   else{
-    ParticipantEntity participant;
+    signal(SIGINT, signal_callback_handler);
     participant.run();
   }
 

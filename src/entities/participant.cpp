@@ -15,8 +15,30 @@ void ParticipantEntity::run()
   std::thread interfaceThread(&ParticipantEntity::handleInterfaceThread, this); 
   std::thread IOThread(&ParticipantEntity::handleIOThread, this); 
 
+  interfaceThread.join(); 
   receiveMessageThread.join();  
   IOThread.join();  
+}
+
+//=======================================================================
+void ParticipantEntity::terminate()
+{
+  status.active = false;
+  PACKET packet; 
+  MessageManager messageManager; 
+  messageManager.setSocket(PORT_SERVER, true);
+
+  packet.type = EXIT_PACKET;
+  packet.active = false;
+  packet.awake = false;
+  strcpy(packet.hostname, status.name);
+  strcpy(packet.ip_addr, status.ip_addr);
+  strcpy(packet.mac_addr, status.mac_addr);
+
+  messageManager.sendMessage(packet);
+  messageManager.closeSocket();
+
+  exit(1);
 }
 
 //=======================================================================
@@ -72,7 +94,7 @@ void ParticipantEntity::handleIOThread()
 {
   char command[30];
 
-  while(true){
+  while(true && std::cin){
     std::cin >> command; 
 
     status_mutex.lock();
@@ -81,29 +103,13 @@ void ParticipantEntity::handleIOThread()
       status.awake = false;
     else if (strcmp(command, "wakeup") == 0)
       status.awake = true;
-    else if (strcmp(command, "exit") == 0){
-      status.active = false;
-      PACKET packet; 
-      MessageManager messageManager; 
-      messageManager.setSocket(PORT_SERVER, true);
-
-      packet.type = EXIT_PACKET;
-      packet.active = false;
-      packet.awake = false;
-      strcpy(packet.hostname, status.name);
-      strcpy(packet.ip_addr, status.ip_addr);
-      strcpy(packet.mac_addr, status.mac_addr);
-
-      messageManager.sendMessage(packet);
-      messageManager.closeSocket();
-      exit(1);
-    }
-     
-    else if (strcmp(command, "enter") == 0)
-      status.active = true;  
+    else if (strcmp(command, "exit") == 0)
+      terminate();     
 
     status_mutex.unlock();
   }
+
+  terminate();
 }
 
 //=======================================================================
@@ -117,7 +123,8 @@ void ParticipantEntity::getMacAddress(char* mac_addr){
 
 //=======================================================================
 void ParticipantEntity::handleInterfaceThread(){
-  while(true){
+  while(true)
+  {
     std::cout << "\033[H\033[2J\033[3J";
     std::cout << "CLIENT\n\n";
 
