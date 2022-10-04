@@ -17,7 +17,7 @@ void MessageManager::setSocket(uint16_t skt_port, bool bBroadcast){
 	else{
 		skt_addr.sin_addr.s_addr = INADDR_ANY;     
 		
-		if (bind(socketFD, (struct sockaddr *)&skt_addr, sizeof(struct sockaddr)) < 0) 
+		if (bind(socketFD, (struct sockaddr *)&skt_addr, sizeof(struct sockaddr)) < 0)
 			printf("ERROR: Could not bind socket\n");
 	}
 }

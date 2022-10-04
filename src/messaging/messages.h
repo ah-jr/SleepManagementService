@@ -18,6 +18,11 @@
 #define SLEEP_MONITORING_PACKET 2
 #define WAKEUP_PACKET 3
 #define EXIT_PACKET 4
+#define ELECTION_PACKET 5
+#define ANSWER_PACKET 6
+
+#define REPLY_SLEEP_DISCOVERY_PACKET 10
+#define REPLY_SLEEP_MONITORING_PACKET 20
 
 #define PORT_CLI 4000
 #define PORT_SERVER 4001
@@ -34,7 +39,7 @@ typedef struct packet
     bool awake;      
     char hostname[MSG_STR_LEN];
     char ip_addr[MSG_STR_LEN];
-    char mac_addr[MSG_STR_LEN]; 
+    char mac_addr[MSG_STR_LEN];
 } PACKET;
 
 //=======================================================================

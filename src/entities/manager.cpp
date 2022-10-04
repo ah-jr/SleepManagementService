@@ -1,4 +1,5 @@
 #include "manager.h"
+#include <time.h>
 
 //=======================================================================
 void ManagerEntity::run()
@@ -6,47 +7,103 @@ void ManagerEntity::run()
   rec_port = PORT_SERVER;
   send_port = PORT_CLI;
   update = true;
+  bNeedsElection = true;
+  bReceivedElectionAnswer = false;
+  bIsLeader = false;
 
+  std::thread election(&ManagerEntity::handleElectionThread, this);
   std::thread sendDiscoveryThread(&ManagerEntity::handleDiscoveryThread, this);
   std::thread sendMonitoringThread(&ManagerEntity::handleMonitoringThread, this);
   std::thread managementThread(&ManagerEntity::handleManagementThread, this);
-  std::thread interfaceThread(&ManagerEntity::handleInterfaceThread, this); 
-  std::thread receiveMessagesThread(&ManagerEntity::handleReceiveThread, this);
+  // std::thread interfaceThread(&ManagerEntity::handleInterfaceThread, this); 
+  // std::thread receiveMessagesThread(&ManagerEntity::handleReceiveThread, this);
+  std::thread messagesThread(&ManagerEntity::handleMessageThread, this);
   std::thread IOThread(&ManagerEntity::handleIOThread, this); 
 
+  election.join();
   sendDiscoveryThread.join();
   sendMonitoringThread.join();
-  interfaceThread.join();
+  // interfaceThread.join();
   managementThread.join();
-  receiveMessagesThread.join();
+  // receiveMessagesThread.join();
+  messagesThread.join();
   IOThread.join();
 }
 
+void ManagerEntity::handleElectionThread(){
+  // while(1){
+  //   if(bNeedsElection){
+  //     MessageManager messageManager;
+  //     messageManager.setSocket(send_port, false);
+
+  //     pMap_mutex.lock();
+  //     for (auto it = pMap.begin(); it != pMap.end(); ++it){
+  //       if(it->second.id > this->status.id){
+  //         struct sockaddr_in address;
+  //         address.sin_family = AF_INET;
+  //         address.sin_addr.s_addr = inet_addr(it->second.ip_addr);
+  //         address.sin_port = htons(send_port);
+
+  //         PACKET packet;
+  //         packet.type = ELECTION_PACKET;
+  //         strcpy(packet.ip_addr, status.ip_addr);
+  //         strcpy(packet.hostname, status.name);
+
+  //         messageManager.replyMessage(address, packet);
+  //       }
+  //     }
+  //     pMap_mutex.unlock();
+  //     messageManager.closeSocket();
+
+  //     time_t timeSent = clock();
+  //     while((double)(clock() - timeSent)/CLOCKS_PER_SEC < 5){
+  //       if(bReceivedElectionAnswer){
+  //         bIsLeader = false;
+  //         break;
+  //       }
+  //     }
+  //     if(!bReceivedElectionAnswer){
+  //       bIsLeader = true;
+  //     }
+
+  //     bReceivedElectionAnswer = false;
+  //   }
+  // }
+}
+
 //=======================================================================
-void ManagerEntity::handleReceiveThread(){
-  struct sockaddr_in rep_addr;
+void ManagerEntity::handleMessageThread()
+{
   PACKET packet;
   PARTICIPANT p;
-  std::map<std::string, PARTICIPANT>::iterator it;
   MessageManager messageManager; 
+  struct sockaddr_in rep_addr;
   messageManager.setSocket(rec_port, false);
+  std::map<std::string, PARTICIPANT>::iterator it;
 
-  while (1){
+  while (true){
     messageManager.receiveMessage(&rep_addr, &packet);
-    
-    pMap_mutex.lock();
+    rep_addr.sin_port = htons(PORT_SERVER);
+
+    status_mutex.lock();
+
+    gethostname(packet.hostname, MSG_STR_LEN);
+    messageManager.getIpAddress(packet.ip_addr); 
+    getMacAddress(packet.mac_addr);
+    strcpy(status.name, packet.hostname);
+    strcpy(status.ip_addr, packet.ip_addr);
+    strcpy(status.mac_addr, packet.mac_addr);
 
     switch (packet.type){
-      case SLEEP_MONITORING_PACKET:
-        if (pMap.count(packet.hostname)){
-          it = pMap.find(packet.hostname);
-          it->second.discovery_count = 0;
-          it->second.monitoring_count = 0;
-          it->second.awake = packet.awake;
-        }
+
+      case SLEEP_DISCOVERY_PACKET:
+        packet.active = status.active;
+        packet.type = REPLY_SLEEP_DISCOVERY_PACKET;
+        if (status.active && status.awake)
+          messageManager.replyMessage(rep_addr, packet);
         break;
 
-      case SLEEP_DISCOVERY_PACKET:   
+      case REPLY_SLEEP_DISCOVERY_PACKET:   
         if (pMap.count(packet.hostname)) {
           it = pMap.find(packet.hostname);
           it->second.discovery_count = 0;
@@ -63,24 +120,80 @@ void ManagerEntity::handleReceiveThread(){
           pMap.insert(std::pair<std::string, PARTICIPANT>(packet.hostname, p)); 
         }
         break;
+        
+      case SLEEP_MONITORING_PACKET:
+        packet.awake = status.awake;
+        packet.type = REPLY_SLEEP_MONITORING_PACKET;
+        if (status.active && status.awake)
+          messageManager.replyMessage(rep_addr, packet);
+        break;
+
+      case REPLY_SLEEP_MONITORING_PACKET:
+        if (pMap.count(packet.hostname)){
+          it = pMap.find(packet.hostname);
+          it->second.discovery_count = 0;
+          it->second.monitoring_count = 0;
+          it->second.awake = packet.awake;
+        }
+        break;
+
+      case WAKEUP_PACKET:
+        status.awake = packet.awake;
+        break;
       
+      case ELECTION_PACKET:
+        packet.type = ANSWER_PACKET;
+        messageManager.replyMessage(rep_addr, packet);
+        bNeedsElection = true;
+        break;
+
+      case ANSWER_PACKET:
+        bReceivedElectionAnswer = true;
+        break;
+
       case EXIT_PACKET:   
         if (pMap.count(packet.hostname)){
           it = pMap.find(packet.hostname); 
           it->second.active = false;
           it->second.awake = false;
-        }
-          
-      break;
+        }  
+        break;
+
 
       default : fprintf(stderr, "Wrong packet: %d\n", packet.type);
     }
 
-    pMap_mutex.unlock();
+    status_mutex.unlock();
   }
 
   messageManager.closeSocket();
 }
+
+//=======================================================================
+// void ManagerEntity::handleReceiveThread(){
+//   struct sockaddr_in rep_addr;
+//   PACKET packet;
+//   PARTICIPANT p;
+//   std::map<std::string, PARTICIPANT>::iterator it;
+//   MessageManager messageManager; 
+//   messageManager.setSocket(rec_port, false);
+
+//   while (1){
+//     messageManager.receiveMessage(&rep_addr, &packet);
+    
+//     pMap_mutex.lock();
+
+//     switch (packet.type){
+
+
+//       default : fprintf(stderr, "Wrong packet: %d\n", packet.type);
+//     }
+
+//     pMap_mutex.unlock();
+//   }
+
+//   messageManager.closeSocket();
+// }
 
 //=======================================================================
 void ManagerEntity::handleManagementThread(){
@@ -91,9 +204,9 @@ void ManagerEntity::handleManagementThread(){
         it->second.awake = false;
       }
       
-      if (it->second.discovery_count >= MAX_DISCOVERY_COUNT) {
-        it->second.active = false;  
-      }
+      // if (it->second.discovery_count >= MAX_DISCOVERY_COUNT) {
+      //   it->second.active = false;  
+      // }
     }
     pMap_mutex.unlock();
 
@@ -212,7 +325,7 @@ void ManagerEntity::handleInterfaceThread(){
       table->add( "MAC Address" );
       table->add( "IP Address" );
       table->add( "Status" );
-      table->add( "Disc_Count" );
+      // table->add( "Disc_Count" );
       table->add( "Mon_Count" );
       table->endOfRow();
 
@@ -223,7 +336,7 @@ void ManagerEntity::handleInterfaceThread(){
           table->add(it->second.mac_addr);
           table->add(it->second.ip_addr);
           table->add(it->second.awake ? "awake" : "ASLEEP" );
-          table->add(std::to_string(it->second.discovery_count));
+          // table->add(std::to_string(it->second.discovery_count));
           table->add(std::to_string(it->second.monitoring_count));
           table->endOfRow();
         }
@@ -239,3 +352,31 @@ void ManagerEntity::handleInterfaceThread(){
 }
 
 //=======================================================================
+void ManagerEntity::getMacAddress(char* mac_addr){
+  std::string str_mac;
+  std::ifstream in(MAC_ADDR_PATH);
+  std::getline(in, str_mac);
+
+  strcpy(mac_addr, str_mac.c_str());
+}
+
+//=======================================================================
+void ManagerEntity::terminate()
+{
+  status.active = false;
+  PACKET packet; 
+  MessageManager messageManager; 
+  messageManager.setSocket(PORT_SERVER, true);
+
+  packet.type = EXIT_PACKET;
+  packet.active = false;
+  packet.awake = false;
+  strcpy(packet.hostname, status.name);
+  strcpy(packet.ip_addr, status.ip_addr);
+  strcpy(packet.mac_addr, status.mac_addr);
+
+  messageManager.sendMessage(packet);
+  messageManager.closeSocket();
+
+  exit(1);
+}

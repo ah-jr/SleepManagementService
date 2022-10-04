@@ -16,6 +16,7 @@ typedef struct participant{
   int monitoring_count;
   bool awake;
   bool active;
+  int id;
   friend bool operator<(const participant &a, const participant &b) { 
     return std::strcmp(a.name, b.name) < 0; 
   } 
