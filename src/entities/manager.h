@@ -36,6 +36,7 @@ public:
     void handleManagementThread();
     void handleIOThread();
     void handleElectionThread();
+    void handleReplicationThread();
     void incrementCounters(int type);
     void repeatMessage(PACKET packet, float interval);
     void sendMessage(PACKET packet);

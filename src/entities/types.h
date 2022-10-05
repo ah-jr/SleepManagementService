@@ -2,9 +2,10 @@
 #define ENTITIES_H
 
 #include <cstring>
-#include "../messaging/messages.h"
+//#include "../messaging/messages.h"
 
 #define MAX_DISCOVERY_COUNT 15
+#define MSG_STR_LEN 20
 #define MAX_MONITORING_COUNT 10
 
 //=======================================================================
@@ -16,7 +17,7 @@ typedef struct participant{
   int monitoring_count;
   bool awake;
   bool active;
-  int id;
+  double id;
   friend bool operator<(const participant &a, const participant &b) { 
     return std::strcmp(a.name, b.name) < 0; 
   } 

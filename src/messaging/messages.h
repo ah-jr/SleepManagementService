@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
+#include "../entities/types.h"
 
 //=======================================================================
 #define SLEEP_DISCOVERY_PACKET 1
@@ -20,14 +21,18 @@
 #define EXIT_PACKET 4
 #define ELECTION_PACKET 5
 #define ANSWER_PACKET 6
+#define REPLICATION_PACKET 7
 
 #define REPLY_SLEEP_DISCOVERY_PACKET 10
 #define REPLY_SLEEP_MONITORING_PACKET 20
 
-#define PORT_CLI 4000
-#define PORT_SERVER 4001
+
+
+//#define PORT_CLI 4000
+//#define PORT_SERVER 4001
 
 #define MSG_STR_LEN 20
+#define MAX_PARTICIPANTS 50
 
 #define MAC_ADDR_PATH "/sys/class/net/eth0/address"
 
@@ -40,6 +45,8 @@ typedef struct packet
     char hostname[MSG_STR_LEN];
     char ip_addr[MSG_STR_LEN];
     char mac_addr[MSG_STR_LEN];
+    int nParticipants;
+    PARTICIPANT participants[MAX_PARTICIPANTS];
 } PACKET;
 
 //=======================================================================

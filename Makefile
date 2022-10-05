@@ -1,6 +1,6 @@
 
-sleep_server: messages.o manager.o participant.o main.o 
-	g++ -o sleep_server messages.o manager.o participant.o main.o -lpthread
+sleep_server: messages.o manager.o main.o 
+	g++ -o sleep_server messages.o manager.o main.o -lpthread
 
 main.o: src/main.cpp
 	g++ -c src/main.cpp -lpthread
@@ -10,9 +10,6 @@ messages.o: src/messaging/messages.cpp
 
 manager.o: src/entities/manager.cpp
 	g++ -c src/entities/manager.cpp
-
-participant.o: src/entities/participant.cpp
-	g++ -c src/entities/participant.cpp
 
 clean:
 	rm *.o sleep_server
