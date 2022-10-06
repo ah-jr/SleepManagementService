@@ -15,6 +15,7 @@
 class ManagerEntity
 {
 private:
+    char leader_name[100];
     PARTICIPANT status;
     std::mutex status_mutex;
     std::atomic<bool> update;

@@ -4,27 +4,31 @@
 extern int PORT_SERVER;
 extern int PORT_CLI;
 extern int id_in;
+extern char hostname[100];
+extern bool bDefault;
 
 //=======================================================================
 void ManagerEntity::run()
 
 {
   MessageManager messageManager;
-  gethostname(status.name, MSG_STR_LEN);
+
+  if (bDefault)
+    gethostname(status.name, MSG_STR_LEN);
+  else
+    strcpy(status.name, hostname);
+
   messageManager.getIpAddress(status.ip_addr); 
   getMacAddress(status.mac_addr);
   rec_port = PORT_SERVER;
   send_port = PORT_CLI;
 
-  //rec_port = send_port = 4000;
   update = true;
   bNeedsElection = true;
   bReceivedElectionAnswer = false;
   bIsLeader = false;
 
-  status_mutex.lock();
   status.id = id_in;
-  status_mutex.unlock();
 
   std::thread election(&ManagerEntity::handleElectionThread, this);
   std::thread sendDiscoveryThread(&ManagerEntity::handleDiscoveryThread, this);
@@ -47,11 +51,9 @@ void ManagerEntity::run()
 
 void ManagerEntity::handleElectionThread(){
   while(1){
-    if(!bIsLeader && bNeedsElection){
+    if(bNeedsElection){
       MessageManager messageManager;
       messageManager.setSocket(send_port, true);
-
-      printf("ELECTION\n");
 
       PACKET packet;
       packet.type = ELECTION_PACKET;
@@ -75,8 +77,26 @@ void ManagerEntity::handleElectionThread(){
       if(!bReceivedElectionAnswer){
         bIsLeader = true;
 
+        strcpy(leader_name, status.name);
+
+        if (pMap.count(status.name) == 0) {
+          PARTICIPANT p;
+          strcpy(p.name, status.name);
+          strcpy(p.ip_addr, status.ip_addr);
+          strcpy(p.mac_addr, status.mac_addr);
+          p.active = true;
+          p.awake = true;
+          p.monitoring_count = 0;   
+          p.discovery_count = 0;
+
+          pMap_mutex.lock();
+          pMap.insert(std::pair<std::string, PARTICIPANT>(status.name, p));
+          pMap_mutex.unlock();
+        }
+
         PACKET packet;
         packet.type = COORDINATOR_PACKET;
+
         strcpy(packet.ip_addr, status.ip_addr);
         strcpy(packet.hostname, status.name);
         strcpy(packet.mac_addr, status.mac_addr);
@@ -94,7 +114,7 @@ void ManagerEntity::handleElectionThread(){
     {
       status_mutex.lock();
       status.election_count++;
-      bNeedsElection = (status.election_count > 5);
+      bNeedsElection = (status.election_count > 3);
       status_mutex.unlock();
     }
   }
@@ -114,16 +134,14 @@ void ManagerEntity::handleMessageThread()
     messageManager.receiveMessage(&rep_addr, &packet);
     rep_addr.sin_port = htons(send_port); 
 
-    gethostname(packet.hostname, MSG_STR_LEN);
-    messageManager.getIpAddress(packet.ip_addr); 
-    getMacAddress(packet.mac_addr);
-    
-    status_mutex.lock();
-    strcpy(status.name, packet.hostname);
-    strcpy(status.ip_addr, packet.ip_addr);
-    strcpy(status.mac_addr, packet.mac_addr);
-    status_mutex.unlock();
+    if (bDefault)
+      gethostname(status.name, MSG_STR_LEN);
+    else
+      strcpy(status.name, hostname); 
 
+    messageManager.getIpAddress(status.ip_addr); 
+    getMacAddress(status.mac_addr); 
+    
     switch (packet.type){
       case SLEEP_DISCOVERY_PACKET:
         strcpy(packet.hostname, status.name);
@@ -160,7 +178,6 @@ void ManagerEntity::handleMessageThread()
         strcpy(packet.mac_addr, status.mac_addr);
         packet.awake = status.awake;
         packet.type = REPLY_SLEEP_MONITORING_PACKET;
-        //if (status.active && status.awake)
         messageManager.replyMessage(rep_addr, packet);
         break;
 
@@ -184,10 +201,11 @@ void ManagerEntity::handleMessageThread()
         strcpy(packet.hostname, status.name);
         strcpy(packet.ip_addr, status.ip_addr);
         strcpy(packet.mac_addr, status.mac_addr);
-        if(packet.processId < status.id)
+        if(packet.processId < status.id) {
           messageManager.replyMessage(rep_addr, packet);
-        else 
           bNeedsElection = true;
+        }
+          
         break;
 
       case ANSWER_PACKET:
@@ -214,8 +232,9 @@ void ManagerEntity::handleMessageThread()
           p.awake = packet.participants[i].awake;
           p.monitoring_count = packet.participants[i].monitoring_count;   
           p.discovery_count = packet.participants[i].discovery_count;
-          pMap.insert(std::pair<std::string, PARTICIPANT>(packet.hostname, p));
+          pMap.insert(std::pair<std::string, PARTICIPANT>(packet.participants[i].name, p));
         }  
+
         pMap_mutex.unlock();
         status_mutex.lock();
         status.election_count = 0;
@@ -223,8 +242,8 @@ void ManagerEntity::handleMessageThread()
 
         break;
 
-      case COORDINATOR_PACKET:  
-        bIsLeader = false;
+      case COORDINATOR_PACKET: 
+        bIsLeader = !(strcmp(status.name, packet.hostname) != 0);
         break;
 
       default : break;
@@ -274,14 +293,16 @@ void ManagerEntity::handleDiscoveryThread(){
 void ManagerEntity::incrementCounters(int type){
   pMap_mutex.lock();
   for (auto it = pMap.begin(); it != pMap.end(); ++it){
-    switch(type){
-    case SLEEP_DISCOVERY_PACKET: 
-      it->second.discovery_count++;
-      break;
+    if (strcmp(it->second.name, status.name) != 0){
+      switch(type){
+      case SLEEP_DISCOVERY_PACKET: 
+        it->second.discovery_count++;
+        break;
 
-    case SLEEP_MONITORING_PACKET: 
-      it->second.monitoring_count++;
-      break;
+      case SLEEP_MONITORING_PACKET: 
+        it->second.monitoring_count++;
+        break;
+      }
     }
   }
   pMap_mutex.unlock();
@@ -367,7 +388,7 @@ void ManagerEntity::sendMessage(PACKET packet){
 }
 
 //=======================================================================
-void ManagerEntity::handleInterfaceThread(){
+void ManagerEntity::handleInterfaceThread(){ 
   while(true){
     if (update){
       std::cout << "\033[H\033[2J\033[3J" ;
@@ -387,21 +408,24 @@ void ManagerEntity::handleInterfaceThread(){
       if(true){
         table->add( "Status" );
         table->add( "Mon_Count" );
+        table->add( "Leader" );
         table->endOfRow();
 
         pMap_mutex.lock();
+
         for (auto it = pMap.begin(); it != pMap.end(); ++it){
-          if (it->second.active){
+          if (it->second.active){ 
             table->add(it->second.name);
             table->add(it->second.mac_addr);
             table->add(it->second.ip_addr);
-            table->add(it->second.awake ? "awake" : "ASLEEP" );
+            table->add(it->second.awake ? "awake" : "ASLEEP" );         
             table->add(std::to_string(it->second.monitoring_count));
+            table->add(strcmp(it->second.name, leader_name) == 0 ? "true" : "false" );
             table->endOfRow();
           }
         }
 
-        pMap_mutex.unlock();
+        pMap_mutex.unlock();      
       }
       else{
         table->add( "Active" );
