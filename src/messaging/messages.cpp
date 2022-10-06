@@ -16,12 +16,7 @@ void MessageManager::setSocket(uint16_t skt_port, bool bBroadcast){
 	}
 	else{
 		skt_addr.sin_addr.s_addr = INADDR_ANY;     
-		/*
-		int enable = 1;
-		if (setsockopt(socketFD, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int)) < 0)
-   			printf("setsockopt(SO_REUSEPORT) failed");
-		*/
-		
+	
 		if (bind(socketFD, (struct sockaddr *)&skt_addr, sizeof(struct sockaddr)) < 0)
 			printf("ERROR: Could not bind socket\n");
 	}
@@ -36,9 +31,9 @@ void MessageManager::closeSocket(){
 void  MessageManager::receiveMessage(struct sockaddr_in* rep_addr, PACKET* packet)
 {
 	socklen_t clilen = sizeof(struct sockaddr_in);
-	char buf[256];
+	char buf[25600];
 
-	if (recvfrom(socketFD, buf, 256, 0, (struct sockaddr *)rep_addr, &clilen) < 0) 
+	if (recvfrom(socketFD, buf, 25600, 0, (struct sockaddr *)rep_addr, &clilen) < 0) 
 		printf("ERROR: Could not receive message\n");
 
 	int pos = 0;
@@ -52,7 +47,17 @@ void  MessageManager::receiveMessage(struct sockaddr_in* rep_addr, PACKET* packe
 	pos += sizeof(char) * MSG_STR_LEN;
 	strcpy(packet->ip_addr, &buf[pos]);
 	pos += sizeof(char) * MSG_STR_LEN;
+	packet->processId = *((uint16_t*)&(buf[pos]));
+	pos += sizeof(uint16_t);
 	strcpy(packet->mac_addr, &buf[pos]);
+	pos += sizeof(char) * MSG_STR_LEN;
+	packet->nParticipants = *((uint16_t*)&(buf[pos]));		
+	pos += sizeof(uint16_t);
+
+	for(int i = 0; i < packet->nParticipants; i++){
+		packet->participants[i] =  *((PARTICIPANT*)&(buf[pos]));
+		pos += sizeof(PARTICIPANT);
+	}
 }
 
 //=======================================================================

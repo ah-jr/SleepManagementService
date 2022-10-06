@@ -22,6 +22,8 @@
 #define ELECTION_PACKET 5
 #define ANSWER_PACKET 6
 #define REPLICATION_PACKET 7
+#define COORDINATOR_PACKET 8
+
 
 #define REPLY_SLEEP_DISCOVERY_PACKET 10
 #define REPLY_SLEEP_MONITORING_PACKET 20
@@ -46,7 +48,7 @@ typedef struct packet
     char ip_addr[MSG_STR_LEN];
     uint16_t processId;
     char mac_addr[MSG_STR_LEN];
-    uint16_t nParticipants;
+    uint16_t nParticipants = 0;
     PARTICIPANT participants[MAX_PARTICIPANTS];
 } PACKET;
 

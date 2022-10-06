@@ -15,6 +15,7 @@ typedef struct participant{
   char ip_addr[MSG_STR_LEN];
   int discovery_count;
   int monitoring_count;
+  int election_count;
   bool awake;
   bool active;
   uint16_t id;
