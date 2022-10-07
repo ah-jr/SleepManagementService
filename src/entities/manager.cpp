@@ -244,6 +244,7 @@ void ManagerEntity::handleMessageThread()
 
       case COORDINATOR_PACKET: 
         bIsLeader = !(strcmp(status.name, packet.hostname) != 0);
+        strcpy(leader_name, packet.hostname);
         break;
 
       default : break;
